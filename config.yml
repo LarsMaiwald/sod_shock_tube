@@ -1,0 +1,4 @@
+N_x: 101    # number of grid points
+x_min: -1   # domain start
+x_max: 1    # domain end
+t_final: 5  # final time
