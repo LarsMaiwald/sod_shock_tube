@@ -1,4 +1,12 @@
-N_x: 101    # number of grid points
-x_min: -1   # domain start
-x_max: 1    # domain end
-t_final: 5  # final time
+N_x: 101        # number of grid points
+x_min: 0.0      # domain start
+x_max: 1.0      # domain end
+t_final: 5.0    # final time
+CFL: 0.5        # Courant number
+g: 1.4          # gamma
+u0_l: 0.0       # inital velocity (left)
+u0_r: 0.0       # initial velocity (right)
+p0_l: 1.0       # initial pressure (left)
+p0_r: 0.1       # initial pressure (right)
+r0_l: 1.0       # initial density (left)
+r0_r: 0.125     # initial density (right)
