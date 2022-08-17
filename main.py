@@ -15,6 +15,49 @@ import matplotlib.pyplot as plt
 import yaml
 
 
+# Functions
+def flux_vec(r, u, p, E):
+    F = np.array([r*u, r*u**2 + p, u*(E + p)])
+    return F
+
+
+def ideal_gas_EoS_e(r, g, p):
+    e = p/(r*(g - 1))
+    return e
+
+
+def ideal_gas_EoS_p(r, g, e):
+    p = e*(r*(g - 1))
+    return p
+
+
+def specific_internal_energy(r, u, E):
+    e = E/r - 0.5*u**2
+    return e
+
+
+def U_decomp(U):
+    r = U[0]
+    u = U[1]/r
+    E = U[2]
+    return r, u, E
+
+
+def total_energy_per_unit_volume(r, u, p, e, g):
+    E = r*(0.5*u**2 - e)
+    return E
+
+
+def updating(U, dt, dx):
+    U_old = U.copy()
+    F_diff = hlle_flux(U_old)
+    U_new = U_old - dt/dx*F_diff
+    U_old.delete()
+    return U_new
+
+# def hlle_flux(U):
+
+
 # Setup
 # Loading the configuration
 cfg = yaml.safe_load(open('config.yml'))
@@ -40,40 +83,9 @@ u0[half:] *= u0_r
 p0 = np.ones(np.shape(x))
 p0[:half] *= p0_l
 p0[half:] *= p0_r
-U = np.array([r0, u0, p0])
+E0 = total_energy_per_unit_volume(r0, u0, p0)
+U = np.array([r0, r0*u0, E0])       # could be U0 be we want to update it
 
 # Computing the time-step size
 c0 = np.sqrt(g*p0/r0)
 dt = CFL*dx/np.max(c0 + np.abs(u0))
-
-
-def flux_vec(U, g):
-    r, u, E, e = U_decomp(U)
-    p = ideal_gas_EoS(U, g)
-    F = np.array([r*u, r*u**2 + p, u*(E + p)])
-    return F
-
-
-def ideal_gas_EoS(U, g):
-    r, u, E, e = U_decomp(U)
-    p = r*e*(g - 1)
-    return p
-
-
-def U_decomp(U):
-    r = U[0]
-    u = U[1]/r
-    E = U[2]
-    e = E/r - 0.5*u**2
-    return r, u, E, e
-
-
-def updating(U, dt, dx):
-    U_old = U.copy()
-    F_diff = hlle_flux(U_old)
-    U_new = U_old - dt/dx*F_diff
-    U_old.delete()
-    return U_new
-
-# def hlle_flux(U):
-#     F_m
