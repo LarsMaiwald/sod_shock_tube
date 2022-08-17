@@ -32,7 +32,7 @@ half = int(N_points/2)
 # Initializing arrays
 x = np.arange(x_min, x_max + dx, dx)    # Is that correct?
 r0 = np.ones(np.shape(x))
-r0[:half] *= r0_l       # There seem to be problems…
+r0[:half] *= r0_l       # There seems to be problems…
 r0[half:] *= r0_r
 u0 = np.ones(np.shape(x))
 u0[:half] *= u0_l
@@ -41,6 +41,10 @@ p0 = np.ones(np.shape(x))
 p0[:half] *= p0_l
 p0[half:] *= p0_r
 U = np.array([r0, u0, p0])
+
+# Computing the time-step size
+c0 = np.sqrt(g*p0/r0)
+dt = CFL*dx/np.max(c0 + np.abs(u0))
 
 
 def flux_vec(U, g):
