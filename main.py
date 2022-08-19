@@ -153,11 +153,7 @@ def newton_solver(p, u, tol):
         max_norm = np.max(np.abs(p_new - p_old))
         check = (max_norm < tol)
         p_old = p_new.copy()
-        print(
-            f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
-        # print(f'{f(p_old, u)=}')
-        # print(f'{f_prime(p_old, u, gamma, f_prime_command)=}')
-        # print(f'{np.mean(p_new)=}')
+        # print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
     return p_new
 
 
@@ -204,9 +200,10 @@ p0[half:] *= p0_r
 eps0 = ideal_gas_EoS_e(rho0, gamma, p0)
 D0, S0, tau0 = conservatives(p0, rho0, v0, eps0)
 u = state_vec(D0, S0, tau0)
-p = p0.copy()
+p = p0.copy()       # I could directly name p0 as p above
 rho = rho0.copy()
 v = v0.copy()
+eps = eps0.copy()
 
 # Preparing time evolution
 c_s0 = relativistic_sound_velocity(p0, rho0, gamma)
@@ -216,26 +213,33 @@ a_l, a_r = signal_velocities(v0_l, v0_r, c_s0)
 # Time evolution
 t = 0
 k = 0
+replace_list = [['$', ''], ['\\', '']]
 while t < t_final:
-    t += dt
-    k += 1
-
-    if k == 1:
+    if k == 0:
         fig, ax = plt.subplots(figsize=(6, 4))
-    if (k - 1) % save_step == 0:
-        plt.clf()
-        plt.plot(x, rho)
-        # plt.axis([xmin, xmax, 0, 1.4])
-        # plt.title('t='+str(round(dt*(n+1),3)),fontsize=16)
-        ax.set_xlabel('x')
-        plt.ylabel(r'$\rho$')
-        fig.tight_layout()
-        plt.draw()
-        fig.savefig(f'plots/plot_{k}.png', dpi=200)
-        plt.pause(0.001)
+    if k % save_step == 0:
+        for var, name in [[p, r'$p$'], [rho, r'$\rho$'], [v, r'$v$'], [eps, r'$\epsilon$']]:
+            ax.clear()
+            ax.plot(x, var)
+            ax.set_xlabel(r'$x$')
+            ax.set_ylabel(name)
+            ax.set_xlim(-L/2, L/2)
+            # fig.legend(f't = {t}')
+            ax.text(0.05, 1.05, f't = {t}', horizontalalignment='left',
+                    verticalalignment='center', transform=ax.transAxes)
+            fig.tight_layout()
+            # plt.draw()
+            filename = name
+            for i, o in replace_list:
+                filename = filename.replace(i, o)
+            fig.savefig(f'plots/{filename}_{k}.png', dpi=200)
+            plt.pause(0.001)        # do I really need that?
 
-    print(f'Time evolution: iteration = {k}, time = {t} of {t_final}')
+    # print(f'Time evolution: iteration = {k}, time = {t} of {t_final}')
     u = updating(p, v, u, a_l, a_r, dt, dx)
     p, rho, v, eps = primitives(p, u, tol)
-
+    t += dt
+    k += 1
 plt.show()
+
+# The np.roll() leads to periodic boundary condition which we do not want.
