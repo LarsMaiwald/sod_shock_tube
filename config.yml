@@ -1,12 +1,13 @@
-N_cells: 4    # number of cells
-x_min: 0.0      # domain start
-x_max: 1.0      # domain end
-t_final: 5.0    # final time
-CFL: 0.5        # Courant number
-g: 1.4          # gamma
-u0_l: 0.0       # inital velocity (left)
-u0_r: 0.0       # initial velocity (right)
-p0_l: 1.0       # initial pressure (left)
-p0_r: 0.1       # initial pressure (right)
-r0_l: 1.0       # initial density (left)
-r0_r: 0.125     # initial density (right)
+N_xcells: 100               # number of cells
+L: 1                        # domain size
+t_final: 1.0                # final time
+c_cfl: 0.1                  # Courant number
+gamma: 1.6666666666666667   # gamma
+tol: 0.000001               # Newton method tolerance
+save_step: 200               # plot saved every {save_step} iterations
+p0_l: 13.33                 # initial pressure (left)
+p0_r: 0.00                  # initial pressure (right)
+rho0_l: 10.00               # initial density (left)
+rho0_r: 1.00                # initial density (right)
+v0_l: 0.00                  # inital velocity (left)
+v0_r: 0.00                  # initial velocity (right)
