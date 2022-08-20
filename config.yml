@@ -1,12 +1,13 @@
 N_xcells: 264               # number of cells
 L: 1                        # domain size
-t_final: 0.425                # final time
+t_final: 0.04              # final time
 c_cfl: 0.1                  # Courant number
 gamma: 1.6666666666666667   # gamma
 tol: 0.000001               # Newton method tolerance
-save_step: 300               # plot saved every {save_step} iterations
+newton_max_it: 10000        # maximum iterations for the Newton solver
+save_step: 10              # plot saved every {save_step} iterations
 p0_l: 13.33                 # initial pressure (left)
-p0_r: 0.00                  # initial pressure (right)
+p0_r: 1.00                  # initial pressure (right)
 rho0_l: 10.00               # initial density (left)
 rho0_r: 1.00                # initial density (right)
 v0_l: 0.00                  # inital velocity (left)
