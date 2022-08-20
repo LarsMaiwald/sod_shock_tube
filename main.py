@@ -14,7 +14,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import yaml
 import sys
-from matplotlib.animation import FuncAnimation
+import os
+# from matplotlib.animation import FuncAnimation
 
 from get_f_prime import get_f_prime
 
@@ -92,9 +93,9 @@ def flux_hlle(p, v, u, a_l, a_r):
     F_p_r = flux_vec(roll_mod_p(p), roll_mod_p(v), roll_mod_p(u, axis=1))
     if a_l <= 0 <= a_r:
         F_m = (a_r*F_m_l - a_l*F_m_r + a_l*a_r *
-               (u - np.roll(u, 1, axis=1)))/(a_r - a_l)
+               (u - roll_mod_m(u, axis=1)))/(a_r - a_l)
         F_p = (a_r*F_p_l - a_l*F_p_r + a_l*a_r *
-               (np.roll(u, -1, axis=1) - u))/(a_r - a_l)
+               (roll_mod_p(u, axis=1) - u))/(a_r - a_l)
     elif a_l >= 0:
         F_m = F_m_l
         F_p = F_p_l
@@ -169,6 +170,9 @@ def roll_mod_m(arr, axis=None):
     arr_roll[0] = arr_roll[1]
     return arr_roll
 
+
+# Clearing output directory 'plots'
+os.system('rm plots/*.png')
 
 # Setup
 # Loading the configuration
