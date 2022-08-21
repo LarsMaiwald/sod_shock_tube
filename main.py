@@ -76,44 +76,103 @@ def cfl_condition(v, c_s, dx, c_cfl):
 
 def relativistic_sound_velocity(p, rho, eps, gamma):
     e = rho*(eps + 1)
-    c_s = np.sqrt((gamma*(gamma - 1)*(e - gamma))/(rho + gamma*(e - rho)))
+    # is it okay to take abs()?
+    c_s = np.sqrt(
+        np.abs((gamma*(gamma - 1)*(e - gamma))/(rho + gamma*(e - rho))))
     return c_s
 
 
-def updating(p, v, u, a_l, a_r, dt, dx):
-    F_diff = flux_hlle(p, v, u, a_l, a_r)
-    u -= dt/dx*F_diff
+# def updating(p, v, u, a_l, a_r, dt, dx, tol):
+#     F_diff = flux_hlle(p, u, a_l, a_r, dx, tol)
+#     u -= dt/dx*F_diff
+#     return u
+
+
+def updating(p, u, dt, dx, tol, gamma):
+    F_diff = flux_hlle(p, u, dx, tol)
+    u_a = u - dt/dx*F_diff
+    # maybe we dont need that line and use p in the next
+    p_a, rho_a, v_a, eps_a = primitives(p, u_a, tol)
+    F_diff_a = flux_hlle(p_a, u_a, dx, tol)
+    u_aa = u_a - dt/dx*F_diff_a
+    u = (u + u_aa)/2
     return u
 
 
-def flux_hlle(p, v, u, a_l, a_r):
-    F_m_l = flux_vec(roll_mod_m(p), roll_mod_m(v), roll_mod_m(u, axis=1))
-    F_m_r = flux_vec(p, v, u)
-    F_p_l = flux_vec(p, v, u)
-    F_p_r = flux_vec(roll_mod_p(p), roll_mod_p(v), roll_mod_p(u, axis=1))
-    if a_l <= 0 <= a_r:
-        F_m = (a_r*F_m_l - a_l*F_m_r + a_l*a_r *
-               (u - roll_mod_m(u, axis=1)))/(a_r - a_l)
-        F_p = (a_r*F_p_l - a_l*F_p_r + a_l*a_r *
-               (roll_mod_p(u, axis=1) - u))/(a_r - a_l)
-    elif a_l >= 0:
-        F_m = F_m_l
-        F_p = F_p_l
-    elif a_r <= 0:
-        F_m = F_m_r
-        F_p = F_p_r
+# def flux_hlle(p, v, u, a_l, a_r):
+#     F_m_l = flux_vec(roll_mod_m(p), roll_mod_m(v), roll_mod_m(u, axis=1))
+#     F_m_r = flux_vec(p, v, u)
+#     F_p_l = flux_vec(p, v, u)
+#     F_p_r = flux_vec(roll_mod_p(p), roll_mod_p(v), roll_mod_p(u, axis=1))
+#     if a_l <= 0 <= a_r:
+#         F_m = (a_r*F_m_l - a_l*F_m_r + a_l*a_r *
+#                (u - roll_mod_m(u, axis=1)))/(a_r - a_l)
+#         F_p = (a_r*F_p_l - a_l*F_p_r + a_l*a_r *
+#                (roll_mod_p(u, axis=1) - u))/(a_r - a_l)
+#     elif a_l >= 0:
+#         F_m = F_m_l
+#         F_p = F_p_l
+#     elif a_r <= 0:
+#         F_m = F_m_r
+#         F_p = F_p_r
+#     F_diff = F_p - F_m
+#     return F_diff
+
+
+def flux_hlle(p, u, dx, tol):
+    sigma_l = mc_limiter(roll_l(u), dx)
+    u_l_m, u_l_p = intercell_states(roll_l(u), sigma_l, dx)
+    p_l_p, rho_l_p, v_l_p, eps_l_p = primitives(p, u_l_p, tol)
+    sigma = mc_limiter(u, dx)
+    u_m, u_p = intercell_states(u, sigma, dx)
+    p_m, rho_m, v_m, eps_m = primitives(p, u_m, tol)
+    p_p, rho_p, v_p, eps_p = primitives(p, u_p, tol)
+    sigma_r = mc_limiter(roll_r(u), dx)
+    u_r_m, u_r_p = intercell_states(roll_r(u), sigma_r, dx)
+    p_r_m, rho_r_m, v_r_m, eps_r_m = primitives(p, u_r_m, tol)
+    F_m_l = flux_vec(p_l_p, v_l_p, u_l_p)
+    F_m_r = flux_vec(p_m, v_m, u_m)
+    F_p_l = flux_vec(p_p, v_p, u_p)
+    F_p_r = flux_vec(p_r_m, v_r_m, u_r_m)
+    c_s_m = relativistic_sound_velocity((p_l_p + p_m)/2, (rho_l_p + rho_m)/2,
+                                        (eps_l_p + eps_m)/2, gamma)
+    c_s_p = relativistic_sound_velocity((p_p + p_r_m)/2, (rho_p + rho_r_m)/2,
+                                        (eps_p + eps_r_m)/2, gamma)
+    a_m_l, a_m_r = signal_velocities(v_l_p, v_m, c_s_m)
+    a_p_l, a_p_r = signal_velocities(v_p, v_r_m, c_s_p)
+    b_m_l, b_m_r = min_insert(a_m_l), min_insert(a_m_r)
+    b_p_l, b_p_r = max_insert(a_p_l), max_insert(a_p_r)
+    F_m = (b_m_r*F_m_l - b_m_l*F_m_r + b_m_l *
+           b_m_r*(u_m - u_l_p))/(b_m_r - b_m_l)
+    F_p = (b_p_r*F_p_l - b_p_l*F_p_r + b_p_l *
+           b_p_r*(u_r_m - u_p))/(b_p_r - b_p_l)
+    # if a_m_l <= 0 <= a_m_r:
+    #     F_m = (a_m_r*F_m_l - a_m_l*F_m_r + a_m_l *
+    #            a_m_r*(u_m - u_l_p))/(a_m_r - a_m_l)
+    # elif a_m_l >= 0:
+    #     F_m = F_m_l
+    # elif a_m_r <= 0:
+    #     F_m = F_m_r
+    # if a_p_l <= 0 <= a_p_r:
+    #     F_p = (a_p_r*F_p_l - a_p_l*F_p_r + a_p_l *
+    #            a_p_r*(u_r_m - u_p))/(a_p_r - a_p_l)
+    # elif a_p_l >= 0:
+    #     F_p = F_p_l
+    # elif a_p_r <= 0:
+    #     F_p = F_p_r
     F_diff = F_p - F_m
     return F_diff
 
 
-def signal_velocities(v0_l, v0_r, c_s0):
-    v_bar = (v0_l + v0_r)/2
-    c_s_bar = (c_s0[0] + c_s0[-1])/2
+def signal_velocities(v_l, v_r, c_s):
+    v_bar = (v_l + v_r)/2
+    c_s_bar = (c_s[0] + c_s[-1])/2
     a_l = (v_bar - c_s_bar)/(1 - v_bar*c_s_bar)
     a_r = (v_bar + c_s_bar)/(1 + v_bar*c_s_bar)
     return a_l, a_r
 
 
+# the argument p is here just the initial guess for the Newton solver
 def primitives(p, u, tol):
     p = newton_solver(p, u, tol, newton_max_it)
     rho, v, eps = primitives_helper(p, u)
@@ -123,9 +182,18 @@ def primitives(p, u, tol):
 def primitives_helper(p, u):
     D, S, tau = state_vec_decomp(u)
     v = S/(tau + D + p)
+    if (v >= 1).any():
+        print('Error: Velocity \'v\' exceeding speed of light.')
+        sys.exit(1)
     W = lorentz_factor(v)
     rho = D/W
+    if (rho < 0).any():
+        print('Error: Negative mass density \'rho\' encountered.')
+        sys.exit(1)
     eps = (tau - D*W + p*(1 - W**2) + D)/(D*W)
+    if (eps < 0).any():
+        print('Error: Negative specific internal energy \'eps\' encountered.')
+        sys.exit(1)
     return rho, v, eps
 
 
@@ -140,9 +208,16 @@ def newton_solver(p, u, tol, newton_max_it):
         max_norm = np.max(np.abs(p_new - p_old))
         check = (max_norm < tol)
         p_old = p_new.copy()
-        if counter == newton_max_it:
+        if counter > newton_max_it:
+            print(
+                f'Newton solver did not converge in {newton_max_it} iterations.')
             sys.exit(1)
-        # print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
+        if (p_new < 0).any():
+            print('Error: Negative pressure \'p\' encountered.')
+            sys.exit(1)
+        print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
+        if check:
+            print('Newton solver done.')
     return p_new
 
 
@@ -159,16 +234,77 @@ def f_prime(p, u, gamma, f_prime_command):
     return result
 
 
-def roll_mod_p(arr, axis=None):
+def roll_r(arr):
+    if np.ndim(arr) == 2:
+        axis = 1
+    elif np.ndim(arr) == 1:
+        axis = None
     arr_roll = np.roll(arr, -1, axis=axis)
-    arr_roll[-1] = arr_roll[-2]
+    if axis == 1:
+        arr_roll[:, -1] = arr_roll[:, -2]
+    else:
+        arr_roll[-1] = arr_roll[-2]
     return arr_roll
 
 
-def roll_mod_m(arr, axis=None):
+def roll_l(arr):
+    if np.ndim(arr) == 2:
+        axis = 1
+    elif np.ndim(arr) == 1:
+        axis = None
     arr_roll = np.roll(arr, 1, axis=axis)
-    arr_roll[0] = arr_roll[1]
+    if axis == 1:
+        arr_roll[:, 0] = arr_roll[0, 1]
+    else:
+        arr_roll[0] = arr_roll[1]
     return arr_roll
+
+
+def minmod_basic(a, b):
+    result = 0
+    if a*b > 0:
+        if np.abs(a) < np.abs(b):
+            result = a
+        elif np.abs(b) < np.abs(a):
+            result = b
+    return result
+
+
+minmod = np.vectorize(minmod_basic)
+
+
+def mc_limiter(u, dx):
+    sigma = minmod((roll_r(u) - roll_l(u))/(2*dx),
+                   minmod(2*(u - roll_l(u)/dx),
+                          2*(roll_r(u) - u/dx)))
+    return sigma
+
+
+def intercell_states(u, sigma, dx):
+    u_m = u - dx*sigma/2
+    u_p = u + dx*sigma/2
+    return u_m, u_p
+
+
+def min_insert(arr):
+    mask = (arr > 0)
+    arr[mask] = 0
+    return arr
+
+
+def max_insert(arr):
+    mask = (arr < 0)
+    arr[mask] = 0
+    return arr
+
+
+def isnan_checker(arr, name):
+    mask = np.isnan(arr)
+    if mask.any():
+        result = True
+    else:
+        result = False
+    print(f'{name} has nan element: {result}')
 
 
 # Clearing output directory 'plots'
@@ -210,7 +346,7 @@ u = state_vec(D, S, tau)
 # Preparing time evolution
 c_s = relativistic_sound_velocity(p, rho, eps, gamma)
 dt = cfl_condition(v, c_s, dx, c_cfl)
-a_l, a_r = signal_velocities(np.max(v[:half]), np.max(v[half:]), c_s)
+# a_l, a_r = signal_velocities(v0_l, v0_r, c_s)
 
 # Time evolution
 t = 0
@@ -235,18 +371,14 @@ while t < t_final:
                 filename = filename.replace(i, o)
             fig.savefig(f'plots/{filename}_{k}.png', dpi=200)
 
-    print(f'Time evolution: iteration = {k}, time = {t:6f} of {t_final}',
-          end='\r')
-    u = updating(p, v, u, a_l, a_r, dt, dx)
+    print(f'Time evolution: iteration = {k}, time = {t:6f} of {t_final}')
+    # end='\r')
+    u = updating(p, u, dt, dx, tol, gamma)
+    D, S, tau = state_vec_decomp(u)     # line not really neccessary
     p, rho, v, eps = primitives(p, u, tol)
-
-    c_s = relativistic_sound_velocity(p, rho, eps, gamma)
-    dt = cfl_condition(v, c_s, dx, c_cfl)
-    a_l, a_r = signal_velocities(np.max(v[:half]), np.max(v[half:]), c_s)
-
     t += dt
     k += 1
-print('\n')
+# print('\n')
 plt.show()
 
 
