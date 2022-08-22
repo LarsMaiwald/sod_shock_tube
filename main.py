@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import yaml
 import sys
 import os
-# from matplotlib.animation import FuncAnimation
 
 from get_f_prime import get_f_prime
 
@@ -39,7 +38,7 @@ def state_vec(D, S, tau):
     return u
 
 
-def ideal_gas_EoS_e(rho, gamma, p):
+def ideal_gas_EoS_eps(rho, gamma, p):
     eps = p/(rho*(gamma - 1))
     return eps
 
@@ -82,12 +81,6 @@ def relativistic_sound_velocity(p, rho, eps, gamma):
     return c_s
 
 
-# def updating(p, v, u, a_l, a_r, dt, dx, tol):
-#     F_diff = flux_hlle(p, u, a_l, a_r, dx, tol)
-#     u -= dt/dx*F_diff
-#     return u
-
-
 def updating(p, u, dt, dx, tol, gamma):
     F_diff = flux_hlle(p, u, dx, tol)
     u_a = u - dt/dx*F_diff
@@ -99,35 +92,15 @@ def updating(p, u, dt, dx, tol, gamma):
     return u
 
 
-# def flux_hlle(p, v, u, a_l, a_r):
-#     F_m_l = flux_vec(roll_mod_m(p), roll_mod_m(v), roll_mod_m(u, axis=1))
-#     F_m_r = flux_vec(p, v, u)
-#     F_p_l = flux_vec(p, v, u)
-#     F_p_r = flux_vec(roll_mod_p(p), roll_mod_p(v), roll_mod_p(u, axis=1))
-#     if a_l <= 0 <= a_r:
-#         F_m = (a_r*F_m_l - a_l*F_m_r + a_l*a_r *
-#                (u - roll_mod_m(u, axis=1)))/(a_r - a_l)
-#         F_p = (a_r*F_p_l - a_l*F_p_r + a_l*a_r *
-#                (roll_mod_p(u, axis=1) - u))/(a_r - a_l)
-#     elif a_l >= 0:
-#         F_m = F_m_l
-#         F_p = F_p_l
-#     elif a_r <= 0:
-#         F_m = F_m_r
-#         F_p = F_p_r
-#     F_diff = F_p - F_m
-#     return F_diff
-
-
 def flux_hlle(p, u, dx, tol):
-    sigma_l = mc_limiter(roll_l(u), dx)
+    sigma_l = minmod_slope(roll_l(u), dx)
     u_l_m, u_l_p = intercell_states(roll_l(u), sigma_l, dx)
     p_l_p, rho_l_p, v_l_p, eps_l_p = primitives(p, u_l_p, tol)
-    sigma = mc_limiter(u, dx)
+    sigma = minmod_slope(u, dx)
     u_m, u_p = intercell_states(u, sigma, dx)
     p_m, rho_m, v_m, eps_m = primitives(p, u_m, tol)
     p_p, rho_p, v_p, eps_p = primitives(p, u_p, tol)
-    sigma_r = mc_limiter(roll_r(u), dx)
+    sigma_r = minmod_slope(roll_r(u), dx)
     u_r_m, u_r_p = intercell_states(roll_r(u), sigma_r, dx)
     p_r_m, rho_r_m, v_r_m, eps_r_m = primitives(p, u_r_m, tol)
     F_m_l = flux_vec(p_l_p, v_l_p, u_l_p)
@@ -140,26 +113,12 @@ def flux_hlle(p, u, dx, tol):
                                         (eps_p + eps_r_m)/2, gamma)
     a_m_l, a_m_r = signal_velocities(v_l_p, v_m, c_s_m)
     a_p_l, a_p_r = signal_velocities(v_p, v_r_m, c_s_p)
-    b_m_l, b_m_r = min_insert(a_m_l), min_insert(a_m_r)
-    b_p_l, b_p_r = max_insert(a_p_l), max_insert(a_p_r)
+    b_m_l, b_m_r = min_insert(a_m_l), max_insert(a_m_r)
+    b_p_l, b_p_r = min_insert(a_p_l), max_insert(a_p_r)
     F_m = (b_m_r*F_m_l - b_m_l*F_m_r + b_m_l *
            b_m_r*(u_m - u_l_p))/(b_m_r - b_m_l)
     F_p = (b_p_r*F_p_l - b_p_l*F_p_r + b_p_l *
            b_p_r*(u_r_m - u_p))/(b_p_r - b_p_l)
-    # if a_m_l <= 0 <= a_m_r:
-    #     F_m = (a_m_r*F_m_l - a_m_l*F_m_r + a_m_l *
-    #            a_m_r*(u_m - u_l_p))/(a_m_r - a_m_l)
-    # elif a_m_l >= 0:
-    #     F_m = F_m_l
-    # elif a_m_r <= 0:
-    #     F_m = F_m_r
-    # if a_p_l <= 0 <= a_p_r:
-    #     F_p = (a_p_r*F_p_l - a_p_l*F_p_r + a_p_l *
-    #            a_p_r*(u_r_m - u_p))/(a_p_r - a_p_l)
-    # elif a_p_l >= 0:
-    #     F_p = F_p_l
-    # elif a_p_r <= 0:
-    #     F_p = F_p_r
     F_diff = F_p - F_m
     return F_diff
 
@@ -198,6 +157,7 @@ def primitives_helper(p, u):
 
 
 def newton_solver(p, u, tol, newton_max_it):
+    # print(p)
     counter = 0
     check = False
     p_new = np.zeros(np.shape(p))
@@ -215,9 +175,9 @@ def newton_solver(p, u, tol, newton_max_it):
         if (p_new < 0).any():
             print('Error: Negative pressure \'p\' encountered.')
             sys.exit(1)
-        print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
-        if check:
-            print('Newton solver done.')
+        # print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
+        # if check:
+        #     print('Newton solver done.')
     return p_new
 
 
@@ -254,7 +214,7 @@ def roll_l(arr):
         axis = None
     arr_roll = np.roll(arr, 1, axis=axis)
     if axis == 1:
-        arr_roll[:, 0] = arr_roll[0, 1]
+        arr_roll[:, 0] = arr_roll[:, 1]
     else:
         arr_roll[0] = arr_roll[1]
     return arr_roll
@@ -263,7 +223,7 @@ def roll_l(arr):
 def minmod_basic(a, b):
     result = 0
     if a*b > 0:
-        if np.abs(a) < np.abs(b):
+        if np.abs(a) <= np.abs(b):
             result = a
         elif np.abs(b) < np.abs(a):
             result = b
@@ -307,8 +267,13 @@ def isnan_checker(arr, name):
     print(f'{name} has nan element: {result}')
 
 
+def minmod_slope(u, dx):
+    sigma = minmod((u - roll_l(u))/dx, (roll_r(u) - u)/dx)
+    return sigma
+
+
 # Clearing output directory 'plots'
-os.system('rm plots/*.png')
+os.system('rm -r plots/*')
 
 # Setup
 # Loading the configuration
@@ -339,23 +304,25 @@ p = np.ones(np.shape(x))
 p[:half] *= p0_l
 p[half:] *= p0_r
 
-eps = ideal_gas_EoS_e(rho, gamma, p)
+eps = ideal_gas_EoS_eps(rho, gamma, p)
 D, S, tau = conservatives(p, rho, v, eps)
 u = state_vec(D, S, tau)
 
 # Preparing time evolution
 c_s = relativistic_sound_velocity(p, rho, eps, gamma)
 dt = cfl_condition(v, c_s, dx, c_cfl)
-# a_l, a_r = signal_velocities(v0_l, v0_r, c_s)
 
 # Time evolution
 t = 0
 k = 0
+l = 0
 replace_list = [['$', ''], ['\\', '']]
+print('Starting simulation…')
 while t < t_final:
     if k == 0:
         fig, ax = plt.subplots(figsize=(6, 4))
     if k % save_step == 0:
+        l += 1
         for var, name in [[p, r'$p$'], [rho, r'$\rho$'], [v, r'$v$'],
                           [eps, r'$\epsilon$']]:
             ax.clear()
@@ -363,51 +330,24 @@ while t < t_final:
             ax.set_xlabel(r'$x$')
             ax.set_ylabel(name)
             ax.set_xlim(-L/2, L/2)
-            ax.text(0.05, 1.05, f't = {t:6f}', horizontalalignment='left',
+            ax.text(0.8, 1.05, f't = {t:6f}', horizontalalignment='left',
                     verticalalignment='center', transform=ax.transAxes)
             fig.tight_layout()
             filename = name
             for i, o in replace_list:
                 filename = filename.replace(i, o)
-            fig.savefig(f'plots/{filename}_{k}.png', dpi=200)
+            fig.savefig(f'plots/{filename}_{l}.png', dpi=200)
 
     print(f'Time evolution: iteration = {k}, time = {t:6f} of {t_final}')
-    # end='\r')
     u = updating(p, u, dt, dx, tol, gamma)
     D, S, tau = state_vec_decomp(u)     # line not really neccessary
     p, rho, v, eps = primitives(p, u, tol)
     t += dt
     k += 1
-# print('\n')
+print('Simulation done.')
+print('Rendering animations…')
+for name in ['p', 'rho', 'v', 'epsilon']:
+    os.system(
+        f'ffmpeg -r {int(1/(20*dt*save_step))} -f image2 -s 1200x800 -i plots/{name}_%d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p animations/{name}.mp4')
+print('Rendering done.')
 plt.show()
-
-
-# fig, ax = plt.subplots(figsize=(6, 4))
-# plot, = ax.plot(C[1:-1], Q[1:-1])
-# text = ax.text(0.1, 0.9, f'{t=:.4f}')
-# ax.set_xlabel(r'$C$')
-# ax.set_ylabel(r'$Q$')
-# ax.set_xlim(0,L)
-# ax.set_ylim(0,1)
-# fig.tight_layout()
-# def animation_frame(frame, f, dx, dt, inter):
-#     print(frame, end='\\r')
-#     global t, Q, Q_new
-#     if frame == 0:
-#         plot.set_ydata(Q[1:-1])
-#         return plot,
-#     elif frame != 0:
-#         for i in range(inter):
-#             dt = 0.1*np.abs(dx/np.max(Q))
-#             t += dt
-#             setting_boundaries(Q)
-#             sigma = limited_slope(Q, dx, mode)
-#             Q_L_m_t, Q_R_m_t, Q_L_p_t, Q_R_p_t = half_way_states(Q, sigma, f, dx, dt)
-#             F_m, F_p = godunov_flux(Q_L_m_t, Q_R_m_t, Q_L_p_t, Q_R_p_t, q_s, f)
-#             Q = time_step(Q_new, Q, F_m, F_p, dx, dt)
-#         plot.set_ydata(Q[1:-1])
-#         text.set_text(f'{t=:.4f}')
-#     return plot,
-# animation = FuncAnimation(fig, func=animation_frame, frames=np.arange(0,100,1), interval=dt*0.6*1e5, fargs=(f_bu, dx, dt, inter)) # interval=2*dt*1000
-# animation.save('anim1.mp4', dpi=200)
-# plt.show()
