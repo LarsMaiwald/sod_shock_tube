@@ -175,9 +175,6 @@ def newton_solver(p, u, tol, newton_max_it):
         if (p_new < 0).any():
             print('Error: Negative pressure \'p\' encountered.')
             sys.exit(1)
-        # print(f'Newton solver: iteration = {counter}, max_norm = {max_norm}')
-        # if check:
-        #     print('Newton solver done.')
     return p_new
 
 
@@ -187,7 +184,6 @@ def f(p, u):
     return result
 
 
-# could be computed more easily using f_prime = v**2*c_s**2 - 1
 def f_prime(p, u, gamma, f_prime_command):
     D, S, tau = state_vec_decomp(u)
     result = eval(f_prime_command)
@@ -233,10 +229,8 @@ def minmod_basic(a, b):
 minmod = np.vectorize(minmod_basic)
 
 
-def mc_limiter(u, dx):
-    sigma = minmod((roll_r(u) - roll_l(u))/(2*dx),
-                   minmod(2*(u - roll_l(u)/dx),
-                          2*(roll_r(u) - u/dx)))
+def minmod_slope(u, dx):
+    sigma = minmod((u - roll_l(u))/dx, (roll_r(u) - u)/dx)
     return sigma
 
 
@@ -258,22 +252,9 @@ def max_insert(arr):
     return arr
 
 
-def isnan_checker(arr, name):
-    mask = np.isnan(arr)
-    if mask.any():
-        result = True
-    else:
-        result = False
-    print(f'{name} has nan element: {result}')
-
-
-def minmod_slope(u, dx):
-    sigma = minmod((u - roll_l(u))/dx, (roll_r(u) - u)/dx)
-    return sigma
-
-
 # Clearing output directory 'plots'
-os.system('rm -r plots/*')
+os.system('rm plots/*.png')
+os.system('rm animations/*.mp4')
 
 # Setup
 # Loading the configuration
