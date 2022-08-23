@@ -1,7 +1,7 @@
-N_xcells: 264               # number of cells
+N_xcells: 400               # number of cells
 L: 1                        # domain size
 t_final: 0.55               # final time
-c_cfl: 0.1                  # Courant number
+c_cfl: 1                    # Courant number
 gamma: 1.6666666666666667   # gamma
 tol: 0.00000001             # Newton method tolerance
 newton_max_it: 5            # maximum iterations for the Newton solver

@@ -10,6 +10,7 @@ Created on Mon Aug 22 14:59:35 2022
 import numpy as np
 import sympy as sp
 import sys
+# from math import log10, floor
 
 # Functions
 
@@ -63,7 +64,7 @@ def conservatives(p, rho, v, eps):
 
 def cfl_condition(v, c_s, dx, c_cfl):
     V = (np.abs(v) + c_s)/(1 + np.abs(v)*c_s)
-    dt = c_cfl*dx/np.max(V)
+    dt = 0.1*c_cfl*dx/np.max(V)
     return dt
 
 
@@ -264,3 +265,13 @@ def get_f_prime():
     f = rho*eps*(gamma - 1) - p
     f_prime = f.diff(p)
     return str(f_prime).replace('sqrt', 'np.sqrt')
+
+
+def round_significant(x, sig):
+    result = np.round(x, sig - int(np.floor(np.log10(np.abs(x)))) - 1)
+    return result
+
+
+def significant_digits(x):
+    result = - int(np.floor(np.log10(np.abs(x)))) - 1
+    return result

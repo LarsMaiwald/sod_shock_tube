@@ -19,9 +19,8 @@ import os
 # Importing own functions
 from functions import (ideal_gas_EoS_eps, conservatives, state_vec,
                        relativistic_sound_velocity, cfl_condition, updating,
-                       state_vec_decomp, primitives, get_f_prime)
-# from get_f_prime import get_f_prime
-
+                       state_vec_decomp, primitives, get_f_prime,
+                       round_significant, significant_digits)
 
 # Clearing output directories 'plots' and 'animations'
 os.system('rm plots/*.png')
@@ -43,6 +42,7 @@ f_prime_command = get_f_prime()
 # Computing constants
 dx = L/N_xcells
 half = int(N_xcells/2)
+sig_digits = significant_digits(dx)
 
 # Initializing arrays
 x = np.arange(-L/2, L/2, dx)
@@ -62,7 +62,8 @@ u = state_vec(D, S, tau)
 
 # Preparing time evolution
 c_s = relativistic_sound_velocity(p, rho, eps, gamma)
-dt = cfl_condition(v, c_s, dx, c_cfl)
+dt = round_significant(cfl_condition(v, c_s, dx, c_cfl), sig_digits)
+t_len = len(str(dt).split('.')[1])
 
 # Time evolution
 t = 0
@@ -83,15 +84,17 @@ while t < t_final:
             ax.set_xlabel(r'$x$')
             ax.set_ylabel(name)
             ax.set_xlim(-L/2, L/2)
-            ax.text(0.8, 1.05, f't = {t:6f}', horizontalalignment='left',
-                    verticalalignment='center', transform=ax.transAxes)
+            ax.text(1.0, 1.05, f't = {t:.{t_len}f}',
+                    horizontalalignment='right', verticalalignment='center',
+                    transform=ax.transAxes)
             fig.tight_layout()
             filename = name
             for i, o in replace_list:
                 filename = filename.replace(i, o)
             fig.savefig(f'plots/{filename}_{k_in}.png', dpi=200)
     # Simulation
-    print(f'Time evolution: iteration = {k}, time = {t:6f} of {t_final}')
+    print(
+        f'Time evolution: iteration = {k}, time = {t:.{t_len}f} of {t_final}')
     u = updating(p, u, dt, dx, gamma, f_prime_command, tol, newton_max_it)
     D, S, tau = state_vec_decomp(u)     # line not really neccessary
     p, rho, v, eps = primitives(
@@ -99,6 +102,11 @@ while t < t_final:
     t += dt
     k += 1
 print('Simulation done.')
+
+# Exporting
+for var, name in [[p, 'p'], [rho, 'rho'], [v, 'v'],
+                  [eps, 'epsilon']]:
+    np.savetxt('comparison/' + name + '.csv', var, delimiter=',')
 
 # Animations
 print('Rendering animations…')
