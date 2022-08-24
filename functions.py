@@ -75,44 +75,75 @@ def relativistic_sound_velocity(p, rho, eps, gamma):
     return c_s
 
 
-def updating(p, u, dt, dx, gamma, f_prime_command, tol, newton_max_it):
-    F_diff = flux_hlle(p, u, dx, gamma, f_prime_command, tol, newton_max_it)
+def updating(p, u, dt, dx, gamma, f_prime_command, tol, newton_max_it, hor):
+    F_diff = flux_hlle(p, u, dx, gamma, f_prime_command,
+                       tol, newton_max_it, hor)
     u_a = u - dt/dx*F_diff
-    # maybe we dont need that line and use p in the next
     p_a, rho_a, v_a, eps_a = primitives(
         p, u_a, gamma, f_prime_command, tol, newton_max_it)
     F_diff_a = flux_hlle(p_a, u_a, dx, gamma,
-                         f_prime_command, tol, newton_max_it)
+                         f_prime_command, tol, newton_max_it, hor)
     u_aa = u_a - dt/dx*F_diff_a
     u = (u + u_aa)/2
     return u
 
 
-def flux_hlle(p, u, dx, gamma, f_prime_command, tol, newton_max_it):
-    sigma_l = minmod_slope(roll_l(u), dx)
-    u_l_m, u_l_p = intercell_states(roll_l(u), sigma_l, dx)
-    p_l_p, rho_l_p, v_l_p, eps_l_p = primitives(
-        p, u_l_p, gamma, f_prime_command, tol, newton_max_it)
-    sigma = minmod_slope(u, dx)
-    u_m, u_p = intercell_states(u, sigma, dx)
-    p_m, rho_m, v_m, eps_m = primitives(
-        p, u_m, gamma, f_prime_command, tol, newton_max_it)
-    p_p, rho_p, v_p, eps_p = primitives(
-        p, u_p, gamma, f_prime_command, tol, newton_max_it)
-    sigma_r = minmod_slope(roll_r(u), dx)
-    u_r_m, u_r_p = intercell_states(roll_r(u), sigma_r, dx)
-    p_r_m, rho_r_m, v_r_m, eps_r_m = primitives(
-        p, u_r_m, gamma, f_prime_command, tol, newton_max_it)
-    F_m_l = flux_vec(p_l_p, v_l_p, u_l_p)
-    F_m_r = flux_vec(p_m, v_m, u_m)
-    F_p_l = flux_vec(p_p, v_p, u_p)
-    F_p_r = flux_vec(p_r_m, v_r_m, u_r_m)
-    c_s_m = relativistic_sound_velocity((p_l_p + p_m)/2, (rho_l_p + rho_m)/2,
-                                        (eps_l_p + eps_m)/2, gamma)
-    c_s_p = relativistic_sound_velocity((p_p + p_r_m)/2, (rho_p + rho_r_m)/2,
-                                        (eps_p + eps_r_m)/2, gamma)
-    a_m_l, a_m_r = signal_velocities(v_l_p, v_m, c_s_m)
-    a_p_l, a_p_r = signal_velocities(v_p, v_r_m, c_s_p)
+def flux_hlle(p, u, dx, gamma, f_prime_command, tol, newton_max_it, hor):
+    if hor == 0:
+        sigma_l = minmod_slope(roll_l(u), dx)
+        u_l_m, u_l_p = intercell_states(roll_l(u), sigma_l, dx)
+        p_l_p, rho_l_p, v_l_p, eps_l_p = primitives(
+            p, u_l_p, gamma, f_prime_command, tol, newton_max_it)
+        sigma = minmod_slope(u, dx)
+        u_m, u_p = intercell_states(u, sigma, dx)
+        p_m, rho_m, v_m, eps_m = primitives(
+            p, u_m, gamma, f_prime_command, tol, newton_max_it)
+        p_p, rho_p, v_p, eps_p = primitives(
+            p, u_p, gamma, f_prime_command, tol, newton_max_it)
+        sigma_r = minmod_slope(roll_r(u), dx)
+        u_r_m, u_r_p = intercell_states(roll_r(u), sigma_r, dx)
+        p_r_m, rho_r_m, v_r_m, eps_r_m = primitives(
+            p, u_r_m, gamma, f_prime_command, tol, newton_max_it)
+        F_m_l = flux_vec(p_l_p, v_l_p, u_l_p)
+        F_m_r = flux_vec(p_m, v_m, u_m)
+        F_p_l = flux_vec(p_p, v_p, u_p)
+        F_p_r = flux_vec(p_r_m, v_r_m, u_r_m)
+        c_s_m = relativistic_sound_velocity((p_l_p + p_m)/2,
+                                            (rho_l_p + rho_m)/2,
+                                            (eps_l_p + eps_m)/2, gamma)
+        c_s_p = relativistic_sound_velocity((p_p + p_r_m)/2,
+                                            (rho_p + rho_r_m)/2,
+                                            (eps_p + eps_r_m)/2, gamma)
+        a_m_l, a_m_r = signal_velocities(v_l_p, v_m, c_s_m)
+        a_p_l, a_p_r = signal_velocities(v_p, v_r_m, c_s_p)
+    elif hor == 1:
+        p, rho, v, eps = primitives(
+            p, u, gamma, f_prime_command, tol, newton_max_it)
+        U = np.array([p, rho, v, eps])
+        sigma_l = minmod_slope(roll_l(U), dx)
+        U_l_m, U_l_p = intercell_states(roll_l(U), sigma_l, dx)
+        u_l_p = state_vec(
+            *conservatives(U_l_p[0], U_l_p[1], U_l_p[2], U_l_p[3]))
+        sigma = minmod_slope(U, dx)
+        U_m, U_p = intercell_states(U, sigma, dx)
+        u_m = state_vec(*conservatives(U_m[0], U_m[1], U_m[2], U_m[3]))
+        u_p = state_vec(*conservatives(U_p[0], U_p[1], U_p[2], U_p[3]))
+        sigma_r = minmod_slope(roll_r(U), dx)
+        U_r_m, U_r_p = intercell_states(roll_r(U), sigma_r, dx)
+        u_r_m = state_vec(
+            *conservatives(U_r_m[0], U_r_m[1], U_r_m[2], U_r_m[3]))
+        F_m_l = flux_vec_prim(U_l_p)
+        F_m_r = flux_vec_prim(U_m)
+        F_p_l = flux_vec_prim(U_p)
+        F_p_r = flux_vec_prim(U_r_m)
+        c_s_m = relativistic_sound_velocity((U_l_p + U_m)[0]/2,
+                                            (U_l_p + U_m)[1]/2,
+                                            (U_l_p + U_m)[3]/2, gamma)
+        c_s_p = relativistic_sound_velocity((U_p + U_r_m)[0]/2,
+                                            (U_p + U_r_m)[1]/2,
+                                            (U_p + U_r_m)[3]/2, gamma)
+        a_m_l, a_m_r = signal_velocities(U_l_p[2], U_m[2], c_s_m)
+        a_p_l, a_p_r = signal_velocities(U_p[2], U_r_m[2], c_s_p)
     b_m_l, b_m_r = min_insert(a_m_l), max_insert(a_m_r)
     b_p_l, b_p_r = min_insert(a_p_l), max_insert(a_p_r)
     F_m = (b_m_r*F_m_l - b_m_l*F_m_r + b_m_l *
@@ -275,3 +306,47 @@ def round_significant(x, sig):
 def significant_digits(x):
     result = - int(np.floor(np.log10(np.abs(x)))) - 1
     return result
+
+
+# test function
+# def flux_hlle_horp(p, u, dx, gamma, f_prime_command, tol, newton_max_it):
+#     p, rho, v, eps = primitives(
+#         p, u, gamma, f_prime_command, tol, newton_max_it)
+#     U = np.array([p, rho, v, eps])
+#     sigma_l = minmod_slope(roll_l(U), dx)
+#     U_l_m, U_l_p = intercell_states(roll_l(U), sigma_l, dx)
+#     u_l_p = state_vec(*conservatives(U_l_p[0], U_l_p[1], U_l_p[2], U_l_p[3]))
+#     sigma = minmod_slope(U, dx)
+#     U_m, U_p = intercell_states(U, sigma, dx)
+#     u_m = state_vec(*conservatives(U_m[0], U_m[1], U_m[2], U_m[3]))
+#     u_p = state_vec(*conservatives(U_p[0], U_p[1], U_p[2], U_p[3]))
+#     sigma_r = minmod_slope(roll_r(U), dx)
+#     U_r_m, U_r_p = intercell_states(roll_r(U), sigma_r, dx)
+#     u_r_m = state_vec(*conservatives(U_r_m[0], U_r_m[1], U_r_m[2], U_r_m[3]))
+#     F_m_l = flux_vec_prim(U_l_p)
+#     F_m_r = flux_vec_prim(U_m)
+#     F_p_l = flux_vec_prim(U_p)
+#     F_p_r = flux_vec_prim(U_r_m)
+#     c_s_m = relativistic_sound_velocity((U_l_p + U_m)[0]/2, (U_l_p + U_m)[1]/2,
+#                                         (U_l_p + U_m)[3]/2, gamma)
+#     c_s_p = relativistic_sound_velocity((U_p + U_r_m)[0]/2, (U_p + U_r_m)[1]/2,
+#                                         (U_p + U_r_m)[3]/2, gamma)
+#     a_m_l, a_m_r = signal_velocities(U_l_p[2], U_m[2], c_s_m)
+#     a_p_l, a_p_r = signal_velocities(U_p[2], U_r_m[2], c_s_p)
+#     b_m_l, b_m_r = min_insert(a_m_l), max_insert(a_m_r)
+#     b_p_l, b_p_r = min_insert(a_p_l), max_insert(a_p_r)
+#     F_m = (b_m_r*F_m_l - b_m_l*F_m_r + b_m_l *
+#            b_m_r*(u_m - u_l_p))/(b_m_r - b_m_l)
+#     F_p = (b_p_r*F_p_l - b_p_l*F_p_r + b_p_l *
+#            b_p_r*(u_r_m - u_p))/(b_p_r - b_p_l)
+#     F_diff = F_p - F_m
+#     return F_diff
+
+
+# Computing the flux vector from the primitive variables
+def flux_vec_prim(U):
+    p, rho, v, eps = U[0], U[1], U[2], U[3]
+    D, S, tau = conservatives(p, rho, v, eps)
+    u = state_vec(D, S, tau)
+    F = flux_vec(p, v, u)
+    return F

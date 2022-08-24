@@ -1,11 +1,12 @@
 N_xcells: 400               # number of cells
 L: 1                        # domain size
 t_final: 0.55               # final time
-c_cfl: 1                    # Courant number
+c_cfl: 1.0                  # Courant number
 gamma: 1.6666666666666667   # gamma
 tol: 0.00000001             # Newton method tolerance
 newton_max_it: 5            # maximum iterations for the Newton solver
-save_step: 10               # plot saved every {save_step} iterations
+save_step: 11               # plot saved every {save_step} iterations
+hor: 1                      # higher order reconstruction using 0 --> conservatives or 1 --> primitives
 p0_l: 13.33                 # initial pressure (left)
 p0_r: 0.00                  # initial pressure (right)
 rho0_l: 10.00               # initial density (left)

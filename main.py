@@ -31,7 +31,7 @@ os.system('rm animations/*.mp4')
 cfg = yaml.safe_load(open('config.yml'))
 N_xcells, t_final, c_cfl = cfg['N_xcells'], cfg['t_final'], cfg['c_cfl']
 gamma, L, tol, save_step = cfg['gamma'], cfg['L'], cfg['tol'], cfg['save_step']
-newton_max_it = cfg['newton_max_it']
+newton_max_it, hor = cfg['newton_max_it'], cfg['hor']
 v0_l, v0_r = cfg['v0_l'], cfg['v0_r']
 p0_l, p0_r = cfg['p0_l'], cfg['p0_r']
 rho0_l, rho0_r = cfg['rho0_l'], cfg['rho0_r']
@@ -63,7 +63,7 @@ u = state_vec(D, S, tau)
 # Preparing time evolution
 c_s = relativistic_sound_velocity(p, rho, eps, gamma)
 dt = round_significant(cfl_condition(v, c_s, dx, c_cfl), sig_digits)
-t_len = len(str(dt).split('.')[1])
+t_len = int(1 - np.floor(np.log10(dt)))
 
 # Time evolution
 t = 0
@@ -95,18 +95,22 @@ while t < t_final:
     # Simulation
     print(
         f'Time evolution: iteration = {k}, time = {t:.{t_len}f} of {t_final}')
-    u = updating(p, u, dt, dx, gamma, f_prime_command, tol, newton_max_it)
-    D, S, tau = state_vec_decomp(u)     # line not really neccessary
+    u = updating(p, u, dt, dx, gamma, f_prime_command, tol, newton_max_it, hor)
+    D, S, tau = state_vec_decomp(u)
     p, rho, v, eps = primitives(
         p, u, gamma, f_prime_command, tol, newton_max_it)
     t += dt
     k += 1
 print('Simulation done.')
+print('Plots saved to folder \'plots\'.')
 
 # Exporting
 for var, name in [[p, 'p'], [rho, 'rho'], [v, 'v'],
                   [eps, 'epsilon']]:
     np.savetxt('comparison/' + name + '.csv', var, delimiter=',')
+with open('comparison/t.txt', 'w') as f:
+    f.write(f'{t:.{t_len}f}')
+print('Final state saved to folder \'comparison\'.')
 
 # Animations
 print('Rendering animations…')
@@ -116,4 +120,4 @@ for name in ['p', 'rho', 'v', 'epsilon']:
                       f'-crf 25 -pix_fmt yuv420p animations/{name}.mp4')
     os.system(command_string)
 print('Rendering done.')
-plt.show()
+print('Animations saved to folder \'animations\'.')

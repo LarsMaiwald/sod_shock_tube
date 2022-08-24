@@ -48,3 +48,4 @@ for var1, var2, name in [[p_exact, p, r'$p$'],
     for i, o in replace_list:
         filename = filename.replace(i, o)
     fig.savefig(f'comparison/{filename}.png', dpi=200)
+print('Plots saved to folder \'comparison\'.')
