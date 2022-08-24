@@ -9,9 +9,10 @@ Created on Tue Aug 23 13:08:05 2022
 # Imorting libraries
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 # Time of data
-t = 0.55013
+t = np.genfromtxt('comparison/t.txt')
 
 # Loading data from our RHLLE implementation
 p = np.genfromtxt('comparison/p.csv', delimiter=',')
@@ -27,6 +28,17 @@ p_exact = solution[:, 1]
 rho_exact = solution[:, 2]
 v_exact = solution[:, 3]
 eps_exact = solution[:, 4]
+
+# Check if times match
+solution_header = np.genfromtxt('comparison/solution.dat',
+                                delimiter='    ', skip_footer=400)
+t_solution = solution_header[1]
+if np.round(t, 5) != np.round(t_solution, 5):
+    print(f'Time of numerical solution (t = {t}) and time of exact solution ' +
+          f'(t = {t_solution}) do not match.')
+    print('Please generate new file \'solution.dat\' using RIEMANN.f ' +
+          f'at time t = {t}.')
+    sys.exit(1)
 
 # Plotting
 replace_list = [['$', ''], ['\\', '']]

@@ -6,7 +6,6 @@ Created on Tue Aug 16 14:58:58 2022
 @author: lars
 """
 
-
 # Project: Sod shock tube
 # by Lars Maiwald
 
