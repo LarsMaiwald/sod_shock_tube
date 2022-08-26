@@ -7,17 +7,9 @@ tol: 0.00000001             # Newton method tolerance
 newton_max_it: 5            # maximum iterations for the Newton solver
 save_step: 11               # plot saved every {save_step} iterations
 hor: 1                      # higher order reconstruction using 0 --> conservatives or 1 --> primitives
-# initial state 1
 p0_l: 13.33                 # initial pressure (left)
 p0_r: 0.00                  # initial pressure (right)
 rho0_l: 10.00               # initial density (left)
 rho0_r: 1.00                # initial density (right)
 v0_l: 0.00                  # inital velocity (left)
 v0_r: 0.00                  # initial velocity (right)
-# initial state 2
-# p0_l: 2000.00               # initial pressure (left)
-# p0_r: 1000.00               # initial pressure (right)
-# rho0_l: 2.00                # initial density (left)
-# rho0_r: 1.00                # initial density (right)
-# v0_l: 0.00                  # inital velocity (left)
-# v0_r: 0.00                  # initial velocity (right)

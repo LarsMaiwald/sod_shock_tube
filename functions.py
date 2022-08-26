@@ -344,3 +344,9 @@ def round_significant(x, sig):
 def significant_digits(x):
     result = - int(np.floor(np.log10(np.abs(x)))) - 1
     return result
+
+
+# Compute L2 norm for error calculation
+def L2_norm(arr):
+    result = np.sqrt(np.sum(arr*arr)/np.size(arr))
+    return result

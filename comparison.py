@@ -11,6 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
+# Importing own functions
+from functions import L2_norm
+
 # Time of data
 t = np.genfromtxt('comparison/t.txt')
 
@@ -40,7 +43,7 @@ if np.round(t, 5) != np.round(t_solution, 5):
           f'at time t = {t}.')
     sys.exit(1)
 
-# Plotting
+# Plotting and error calculation
 replace_list = [['$', ''], ['\\', '']]
 fig, ax = plt.subplots(figsize=(6, 4))
 for var1, var2, name in [[p_exact, p, r'$p$'],
@@ -60,4 +63,5 @@ for var1, var2, name in [[p_exact, p, r'$p$'],
     for i, o in replace_list:
         filename = filename.replace(i, o)
     fig.savefig(f'comparison/{filename}.png', dpi=200)
+    print(f'{filename}: L2_norm: {L2_norm(var1 - var2)}')
 print('Plots saved to folder \'comparison\'.')

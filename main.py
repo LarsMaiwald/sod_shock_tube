@@ -91,6 +91,18 @@ while t < t_final:
             for i, o in replace_list:
                 filename = filename.replace(i, o)
             fig.savefig(f'plots/{filename}_{k_in}.png', dpi=200)
+        ax.clear()
+        ax.set_xlabel(r'$x$')
+        ax.set_xlim(-L/2, L/2)
+        for var, name in [[p, r'$p$'], [rho, r'$\rho$'], [v, r'$v$'],
+                          [eps, r'$\epsilon$']]:
+            ax.plot(x, var, label=name)
+        ax.text(1.0, 1.05, f't = {t:.{t_len}f}',
+                horizontalalignment='right', verticalalignment='center',
+                transform=ax.transAxes)
+        fig.tight_layout()
+        fig.legend(loc=(0.86, 0.665))
+        fig.savefig(f'plots/all_{k_in}.png', dpi=200)
     # Simulation
     print(
         f'Time evolution: iteration = {k}, time = {t:.{t_len}f} of {t_final}')
@@ -113,7 +125,7 @@ print('Final state saved to folder \'comparison\'.')
 
 # Animations
 print('Rendering animations…')
-for name in ['p', 'rho', 'v', 'epsilon']:
+for name in ['p', 'rho', 'v', 'epsilon', 'all']:
     command_string = (f'ffmpeg -r {int(1/(20*dt*save_step))} -f image2 ' +
                       f'-s 1200x800 -i plots/{name}_%d.png -vcodec libx264 ' +
                       f'-crf 25 -pix_fmt yuv420p animations/{name}.mp4')
