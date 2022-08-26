@@ -10,9 +10,13 @@ Created on Tue Aug 23 13:08:05 2022
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import os
 
 # Importing own functions
 from functions import L2_norm
+
+# Creating output directories if not yet existent
+os.system('mkdir -p comparison')
 
 # Time of data
 t = np.genfromtxt('comparison/t.txt')

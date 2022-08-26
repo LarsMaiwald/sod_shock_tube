@@ -21,6 +21,10 @@ from functions import (ideal_gas_EoS_eps, conservatives, state_vec,
                        state_vec_decomp, primitives, get_f_prime,
                        round_significant, significant_digits)
 
+# Creating output directories if not yet existent
+os.system('mkdir -p plots')
+os.system('mkdir -p animations')
+
 # Clearing output directories 'plots' and 'animations'
 os.system('rm plots/*.png')
 os.system('rm animations/*.mp4')
