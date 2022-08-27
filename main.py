@@ -105,7 +105,7 @@ while t < t_final:
                 horizontalalignment='right', verticalalignment='center',
                 transform=ax.transAxes)
         fig.tight_layout()
-        fig.legend(loc=(0.86, 0.665))
+        ax.legend(loc=(0.86, 0.665))
         fig.savefig(f'plots/all_{k_in}.png', dpi=200)
     # Simulation
     print(
