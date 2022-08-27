@@ -25,4 +25,4 @@ The program numerically solves the special relativistic Euler equations in one d
     - computes error
   
 ## Results
-The results and the exact solution for the given config.yml are included in the repository.
+The results and the exact solution for the given config.yml are included in the repository. By running main.py the plots and animations get overwritten.
