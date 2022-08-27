@@ -10,6 +10,7 @@ The program numerically solves the special relativistic Euler equations in one d
 - FFmpeg
 
 ## Usage
+**(Run all Python scripts with 'sod_shock_tube' as the working directory!)**
 1. configuration in config.yml
     - file already contains special relativistic shock tube problem with recommended values
 2. execution of main.py
@@ -24,4 +25,4 @@ The program numerically solves the special relativistic Euler equations in one d
     - computes error
   
 ## Results
-The results and the exact solution for the given config.yml are included in the repository. 
+The results and the exact solution for the given config.yml are included in the repository.
